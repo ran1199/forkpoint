@@ -6,10 +6,7 @@ import { withFakeForks } from "./fake-data";
 import { deleteFile, loadFiles, saveFile } from "./file-db";
 import type { Choice, Decision, Draft, Fork, Lens, Mode, Session, Sketch, UploadedPdf } from "./types";
 
-const STORAGE_KEY: Record<Mode, string> = {
-  app: "forkpoint:session",
-  demo: "forkpoint:demo-session",
-};
+const STORAGE_KEY = "forkpoint:session"; // live version only; the demo is never saved
 
 export function emptySession(): Session {
   return {
@@ -29,27 +26,45 @@ export function emptySession(): Session {
   };
 }
 
-/** Phase 2 demo: the fake Ladle data. Phase 4 replaces this with /data/demo-session.json. */
-function demoStartSession(): Session {
+/** The Phase 2 fake Ladle data, used by the demo until /data/demo-session.json exists. */
+function fakeDemoSession(): Session {
   return withFakeForks({
     ...emptySession(),
-    prdText: "[PLACEHOLDER: the Ladle PRD text comes from the recorded demo session in Phase 4.]",
+    prdText: "[PLACEHOLDER: the Ladle PRD text comes from the recorded demo session.]",
   });
 }
 
-function startSession(mode: Mode): Session {
-  return mode === "demo" ? demoStartSession() : emptySession();
+/**
+ * D12: the demo loads /data/demo-session.json (a file saved with "Download session")
+ * if it exists, otherwise the fake data. It's a plain file, not an AI call.
+ */
+async function loadDemoSession(): Promise<{ session: Session; files: Record<string, string> }> {
+  try {
+    const res = await fetch("/data/demo-session.json", { cache: "no-store" });
+    if (res.ok) {
+      const saved = (await res.json()) as Partial<Session> & { files?: Record<string, string> };
+      if (saved.version === 1) {
+        const { files = {}, ...rest } = saved;
+        // The demo always starts at the first fork, wherever the recording ended.
+        const forks = rest.forks ?? [];
+        return { session: { ...emptySession(), ...rest, drafts: {}, currentForkId: forks[0]?.id ?? null } as Session, files };
+      }
+    }
+  } catch {
+    // fall through to the fake data
+  }
+  return { session: fakeDemoSession(), files: {} };
 }
 
-function loadSession(mode: Mode): Session {
+function loadSession(): Session {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY[mode]);
-    if (!raw) return startSession(mode);
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return emptySession();
     const saved = JSON.parse(raw) as Partial<Session>;
-    if (saved.version !== 1) return startSession(mode);
+    if (saved.version !== 1) return emptySession();
     return { ...emptySession(), ...saved } as Session;
   } catch {
-    return startSession(mode);
+    return emptySession();
   }
 }
 
@@ -68,16 +83,18 @@ export type SessionStore = {
 };
 
 export async function loadSessionStore(mode: Mode): Promise<SessionStore> {
-  let session = loadSession(mode);
+  if (mode === "demo") return demoStore();
+
+  let session = loadSession();
   let files: Record<string, string> = {};
   let failed = false;
   const listeners = new Set<() => void>();
   const notify = () => listeners.forEach((l) => l());
-  const prefix = `${mode}:`;
+  const prefix = "app:";
 
   function persist() {
     try {
-      localStorage.setItem(STORAGE_KEY[mode], JSON.stringify(session));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
       failed = false;
     } catch {
       failed = true;
@@ -148,6 +165,30 @@ export async function loadSessionStore(mode: Mode): Promise<SessionStore> {
       files = next;
       deleteFile(prefix + id).catch(() => {});
     },
+  };
+}
+
+/** The read-only demo: kept in memory only, never saved, makes no AI calls. */
+async function demoStore(): Promise<SessionStore> {
+  localStorage.removeItem("forkpoint:demo-session"); // leftover from the Phase 2 demo
+  const loaded = await loadDemoSession();
+  let session = loaded.session;
+  const listeners = new Set<() => void>();
+  return {
+    get: () => session,
+    // Only moving between forks changes anything here; decisions can't be edited.
+    update(change) {
+      session = { ...session, currentForkId: change(session).currentForkId };
+      listeners.forEach((l) => l());
+    },
+    subscribe(listener) {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
+    },
+    saveFailed: () => false,
+    files: () => loaded.files,
+    addFile: async () => false,
+    removeFile: () => {},
   };
 }
 

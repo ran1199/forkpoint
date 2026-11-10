@@ -1,5 +1,5 @@
-import { SetupScreen } from "@/components/screens/SetupScreen";
+import { WalkthroughScreen } from "@/components/screens/WalkthroughScreen";
 
 export default function Page() {
-  return <SetupScreen />;
+  return <WalkthroughScreen />;
 }

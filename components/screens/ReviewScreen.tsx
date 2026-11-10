@@ -13,7 +13,7 @@ import { decisionStatus, describeChoice, groupByLens, LENS_LABEL } from "@/lib/s
 import type { Fork } from "@/lib/types";
 
 export function ReviewScreen() {
-  const { session, update, saveFailed, files, mode, base } = useSession();
+  const { session, update, saveFailed, files, mode, base, setupHref } = useSession();
   const router = useRouter();
   const status = useAiStatus("prompt");
 
@@ -22,7 +22,7 @@ export function ReviewScreen() {
       <main className="mx-auto max-w-4xl px-10 py-12">
         <h1 className="text-2xl font-semibold text-zinc-900">Review</h1>
         <p className="mt-4 text-zinc-700">
-          Nothing to review yet. <Link href={base} className={btn.link}>Go to Setup</Link>
+          Nothing to review yet. <Link href={setupHref} className={btn.link}>Go to Setup</Link>
         </p>
       </main>
     );

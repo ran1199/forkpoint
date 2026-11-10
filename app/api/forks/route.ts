@@ -1,11 +1,12 @@
 // Call A: find the forks in the PRD and sketches.
+import type { NextRequest } from "next/server";
 import { callStructured, handleJson, materialBlocks } from "@/lib/server/claude";
 import { FORKS_SYSTEM } from "@/lib/server/prompts";
 import { ForksRequestSchema, ForksResultSchema } from "@/lib/schemas";
 
 export const maxDuration = 300; // seconds; finding forks in a long PRD can take a while
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   return handleJson(request, ForksRequestSchema, ({ materials }) =>
     callStructured({
       system: FORKS_SYSTEM,

@@ -9,7 +9,7 @@ import { browser } from "react-dom";
 import { loadSessionStore, type SessionStore } from "@/lib/session";
 import type { Mode } from "@/lib/types";
 
-type Ctx = { store: SessionStore; mode: Mode; base: string };
+type Ctx = { store: SessionStore; mode: Mode; base: string; setupHref: string };
 const SessionContext = createContext<Ctx | null>(null);
 
 // One loading promise per mode, so React's use() waits for the same one.
@@ -27,7 +27,9 @@ function BrowserOnly({ mode, children }: { mode: Mode; children: React.ReactNode
   use(browser("The Forkpoint session is saved in this browser."));
   const store = use((storePromises[mode] ??= loadSessionStore(mode)));
   const base = mode === "demo" ? "/demo" : "/app";
-  return <SessionContext value={{ store, mode, base }}>{children}</SessionContext>;
+  // The demo opens on the walkthrough (/demo); its Setup screen is at /demo/setup.
+  const setupHref = mode === "demo" ? "/demo/setup" : "/app";
+  return <SessionContext value={{ store, mode, base, setupHref }}>{children}</SessionContext>;
 }
 
 export function useSession() {
@@ -43,6 +45,8 @@ export function useSession() {
     addFile: ctx.store.addFile,
     removeFile: ctx.store.removeFile,
     mode: ctx.mode,
+    readOnly: ctx.mode === "demo", // the demo is read-only (Ran, Phase 2 answers)
     base: ctx.base,
+    setupHref: ctx.setupHref,
   };
 }

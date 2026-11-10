@@ -1,11 +1,12 @@
 // Call C: write the Claude Code prompt and the decision checklist.
+import type { NextRequest } from "next/server";
 import { callStructured, handleJson, materialBlocks } from "@/lib/server/claude";
 import { PROMPT_SYSTEM } from "@/lib/server/prompts";
 import { PromptRequestSchema, PromptResultSchema } from "@/lib/schemas";
 
 export const maxDuration = 300;
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   return handleJson(request, PromptRequestSchema, ({ materials, product_name, primary_user, forks, hard_requirements }) =>
     callStructured({
       system: PROMPT_SYSTEM,

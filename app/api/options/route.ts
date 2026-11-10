@@ -1,11 +1,12 @@
 // Call B: offer 2–3 options for one fork.
+import type { NextRequest } from "next/server";
 import { callStructured, FriendlyError, handleJson, materialBlocks } from "@/lib/server/claude";
 import { OPTIONS_SYSTEM } from "@/lib/server/prompts";
 import { OptionsRequestSchema, OptionsResultSchema } from "@/lib/schemas";
 
 export const maxDuration = 300;
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   return handleJson(request, OptionsRequestSchema, async ({ materials, fork, decisionsSoFar }) => {
     const result = await callStructured({
       system: OPTIONS_SYSTEM,

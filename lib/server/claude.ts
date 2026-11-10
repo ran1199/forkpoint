@@ -5,8 +5,10 @@
 import "server-only"; // build fails if this file is ever imported by browser code
 import Anthropic from "@anthropic-ai/sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
+import type { NextRequest } from "next/server";
 import type { z } from "zod";
 import type { Materials } from "@/lib/schemas";
+import { isUnlocked, UNLOCK_COOKIE } from "./auth";
 
 /** An error whose message is safe and useful to show the designer. */
 export class FriendlyError extends Error {
@@ -109,11 +111,18 @@ export async function callStructured<S extends z.ZodType>(opts: {
 
 /** Shared wrapper for the three routes: check the request, run, and answer in JSON. */
 export async function handleJson<T extends z.ZodType>(
-  request: Request,
+  request: NextRequest,
   bodySchema: T,
   run: (body: z.infer<T>) => Promise<unknown>,
 ): Promise<Response> {
-  // Phase 4 adds the password check (D10) here.
+  // D10: every AI route rejects requests without the password cookie
+  // (the proxy checks too; this is the second lock).
+  if (!isUnlocked(request.cookies.get(UNLOCK_COOKIE)?.value)) {
+    return Response.json(
+      { error: "The live version is locked. Reload the page and enter the password again." },
+      { status: 401 },
+    );
+  }
   let body: z.infer<T>;
   try {
     body = bodySchema.parse(await request.json());
