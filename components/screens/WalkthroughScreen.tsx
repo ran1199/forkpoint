@@ -227,7 +227,6 @@ function CurrentFork({
 }) {
   const result = session.options[fork.id];
   const status = useAiStatus(`options:${fork.id}`);
-  const { mode } = useSession();
   const toggle = (kind: "own" | "later" | "ai") =>
     setDraft((d) => ({ ...d, selected: d.selected === kind ? null : kind, optionId: null, editing: false }));
 
@@ -250,12 +249,12 @@ function CurrentFork({
               <OptionCard key={opt.id} option={opt} draft={draft} setDraft={setDraft} />
             ))}
           </div>
-          {/* A live mockup under each option card: Ladle's look in the demo, a wireframe live. */}
+          {/* A live wireframe mockup under each option card. */}
           {result.options.some((o) => o.mockup) && (
             <div className="mt-4 grid grid-cols-3 gap-4">
               {result.options.map((opt) =>
                 opt.mockup ? (
-                  <MockupPhone key={opt.id} mockup={opt.mockup} look={mode === "demo" ? "ladle" : "wireframe"} label={`Option ${opt.id}`} />
+                  <MockupPhone key={opt.id} mockup={opt.mockup} label={`Option ${opt.id}`} />
                 ) : (
                   <div key={opt.id} />
                 ),

@@ -4,7 +4,7 @@
 
 import type { Fork, Mockup, MockupElement, OptionsResult, Session } from "./types";
 
-// ---------- Demo mockups (drawn in the Ladle prototype's look) ----------
+// ---------- Demo mockups (wireframes) ----------
 // Content follows the Ladle prototype (ladle-prototype.vercel.app): Maya, a
 // 1,600 kcal budget, Chicken adobo at 420 kcal per serving, confidence labels.
 
