@@ -168,27 +168,38 @@ export async function loadSessionStore(mode: Mode): Promise<SessionStore> {
   };
 }
 
-/** The read-only demo: kept in memory only, never saved, makes no AI calls. */
+/**
+ * The demo: fully clickable, but kept in memory only. It never calls Claude and
+ * starts again from the recording (or the fake data) when the page is reloaded.
+ */
 async function demoStore(): Promise<SessionStore> {
   localStorage.removeItem("forkpoint:demo-session"); // leftover from the Phase 2 demo
   const loaded = await loadDemoSession();
   let session = loaded.session;
+  let files = loaded.files;
   const listeners = new Set<() => void>();
+  const notify = () => listeners.forEach((l) => l());
   return {
     get: () => session,
-    // Only moving between forks changes anything here; decisions can't be edited.
     update(change) {
-      session = { ...session, currentForkId: change(session).currentForkId };
-      listeners.forEach((l) => l());
+      session = change(session);
+      notify();
     },
     subscribe(listener) {
       listeners.add(listener);
       return () => listeners.delete(listener);
     },
     saveFailed: () => false,
-    files: () => loaded.files,
-    addFile: async () => false,
-    removeFile: () => {},
+    files: () => files,
+    async addFile(id, dataUrl) {
+      files = { ...files, [id]: dataUrl };
+      return true;
+    },
+    removeFile(id) {
+      const next = { ...files };
+      delete next[id];
+      files = next;
+    },
   };
 }
 

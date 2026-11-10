@@ -10,9 +10,6 @@ import { btn } from "./styles";
 
 export { btn };
 
-/** Tooltip on controls that are switched off in the read-only demo (D12). */
-export const READ_ONLY = "The demo is read-only.";
-
 
 const STATUS_STYLE: Record<Exclude<Status, null>, string> = {
   Done: "bg-green-50 text-green-800 border-green-200",

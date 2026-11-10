@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { useSession } from "@/components/SessionProvider";
-import { AiError, AiLoading, btn, READ_ONLY, RiskBadge, SaveWarning, StatusPill } from "@/components/ui";
+import { AiError, AiLoading, btn, RiskBadge, SaveWarning, StatusPill } from "@/components/ui";
 import { fetchOptions } from "@/lib/ai-client";
 import { getAiStatus, setAiStatus, useAiStatus } from "@/lib/ai-status";
 import {
@@ -40,7 +40,7 @@ async function requestOptions(
 }
 
 export function WalkthroughScreen() {
-  const { session, getSession, update, saveFailed, files, mode, readOnly, base, setupHref } = useSession();
+  const { session, getSession, update, saveFailed, files, mode, base, setupHref } = useSession();
   const router = useRouter();
 
   const currentForkId = session.currentForkId ?? session.forks[0]?.id ?? null;
@@ -65,10 +65,7 @@ export function WalkthroughScreen() {
 
   const currentId = session.currentForkId ?? session.forks[0].id;
   const fork = session.forks.find((f) => f.id === currentId) ?? session.forks[0];
-  // The read-only demo always shows the recorded decision.
-  const draft = readOnly
-    ? draftFromDecision(session.decisions[fork.id])
-    : (session.drafts[fork.id] ?? draftFromDecision(session.decisions[fork.id]));
+  const draft = session.drafts[fork.id] ?? draftFromDecision(session.decisions[fork.id]);
 
   const setDraft = (change: (d: Draft) => Draft) =>
     update((s) => ({ ...s, drafts: { ...s.drafts, [fork.id]: change(draft) } }));
@@ -78,16 +75,10 @@ export function WalkthroughScreen() {
   }
 
   function confirmAndNext() {
-    const index = session.forks.findIndex((f) => f.id === fork.id);
-    const next = session.forks[index + 1];
-    if (readOnly) {
-      // Demo: just move on; nothing is saved or changed.
-      if (next) update((s) => ({ ...s, currentForkId: next.id }));
-      else router.push(`${base}/review`);
-      return;
-    }
     const choice = choiceFromDraft(session, fork, draft);
     if (!choice) return;
+    const index = session.forks.findIndex((f) => f.id === fork.id);
+    const next = session.forks[index + 1];
     update((s) => {
       const drafts = { ...s.drafts };
       delete drafts[fork.id];
@@ -103,7 +94,7 @@ export function WalkthroughScreen() {
 
   return (
     <div className="grid min-h-screen grid-cols-[280px_minmax(0,1fr)_320px]">
-      <ProgressList session={session} currentId={fork.id} onOpen={openFork} openAny={readOnly} />
+      <ProgressList session={session} currentId={fork.id} onOpen={openFork} />
       <main className="border-x border-zinc-200 px-10 py-10">
         <SaveWarning failed={saveFailed} />
         <h1 className="sr-only">Journey walkthrough</h1>
@@ -113,8 +104,7 @@ export function WalkthroughScreen() {
           fork={fork}
           draft={draft}
           setDraft={setDraft}
-          readOnly={readOnly}
-          canConfirm={readOnly || choiceFromDraft(session, fork, draft) !== null}
+          canConfirm={choiceFromDraft(session, fork, draft) !== null}
           onConfirm={confirmAndNext}
           onRetry={() => {
             setAiStatus(`options:${fork.id}`, null);
@@ -162,12 +152,10 @@ function ProgressList({
   session,
   currentId,
   onOpen,
-  openAny,
 }: {
   session: Session;
   currentId: string;
   onOpen: (id: string) => void;
-  openAny: boolean; // demo: every fork can be viewed
 }) {
   return (
     <nav aria-label="Journey progress" className="px-6 py-10">
@@ -179,7 +167,7 @@ function ProgressList({
             {group.forks.map((f) => {
               const status = forkStatus(session, f, currentId);
               // D7: forks that were already decided can be reopened. Unreached ones can't.
-              const canOpen = (openAny || status !== null) && f.id !== currentId;
+              const canOpen = status !== null && f.id !== currentId;
               const content = (
                 <>
                   <span className="min-w-0">
@@ -227,13 +215,11 @@ function CurrentFork({
   canConfirm,
   onConfirm,
   onRetry,
-  readOnly,
 }: {
   session: Session;
   fork: Fork;
   draft: Draft;
   setDraft: (change: (d: Draft) => Draft) => void;
-  readOnly: boolean;
   canConfirm: boolean;
   onConfirm: () => void;
   onRetry: () => void;
@@ -258,7 +244,7 @@ function CurrentFork({
       {result && result.options.length > 0 ? (
         <div className="mt-8 grid grid-cols-3 gap-4">
           {result.options.map((opt) => (
-            <OptionCard key={opt.id} option={opt} draft={draft} setDraft={setDraft} readOnly={readOnly} />
+            <OptionCard key={opt.id} option={opt} draft={draft} setDraft={setDraft} />
           ))}
         </div>
       ) : status?.state === "loading" ? (
@@ -284,27 +270,21 @@ function CurrentFork({
       )}
 
       <div className="mt-6 flex flex-wrap gap-3">
-        <span title={readOnly ? READ_ONLY : undefined}>
-          <button type="button" aria-pressed={draft.selected === "own"} onClick={() => toggle("own")}
-            disabled={readOnly} className={draft.selected === "own" ? btn.toggleOn : btn.toggleOff}>
-            Write my own
-          </button>
-        </span>
-        <span title={readOnly ? READ_ONLY : undefined}>
-          <button type="button" aria-pressed={draft.selected === "later"} onClick={() => toggle("later")}
-            disabled={readOnly} className={draft.selected === "later" ? btn.toggleOn : btn.toggleOff}>
-            Decide later
-          </button>
-        </span>
-        <span title={readOnly ? READ_ONLY : undefined}>
-          <button type="button" aria-pressed={draft.selected === "ai"} onClick={() => toggle("ai")}
-            disabled={readOnly} className={draft.selected === "ai" ? btn.toggleOn : btn.toggleOff}>
-            Fine, let the AI decide
-          </button>
-        </span>
+        <button type="button" aria-pressed={draft.selected === "own"} onClick={() => toggle("own")}
+          className={draft.selected === "own" ? btn.toggleOn : btn.toggleOff}>
+          Write my own
+        </button>
+        <button type="button" aria-pressed={draft.selected === "later"} onClick={() => toggle("later")}
+          className={draft.selected === "later" ? btn.toggleOn : btn.toggleOff}>
+          Decide later
+        </button>
+        <button type="button" aria-pressed={draft.selected === "ai"} onClick={() => toggle("ai")}
+          className={draft.selected === "ai" ? btn.toggleOn : btn.toggleOff}>
+          Fine, let the AI decide
+        </button>
       </div>
 
-      {!readOnly && draft.selected === "ai" && !result?.options.some((o) => o.id === result.recommended) && (
+      {draft.selected === "ai" && !result?.options.some((o) => o.id === result.recommended) && (
         <p className="mt-4 text-sm text-zinc-700">
           There&apos;s no recommendation to save yet, because no options have loaded for this fork.
         </p>
@@ -317,7 +297,6 @@ function CurrentFork({
             id="own"
             rows={3}
             value={draft.ownText}
-            readOnly={readOnly}
             onChange={(e) => setDraft((d) => ({ ...d, ownText: e.target.value }))}
             className="mt-1 w-full rounded-md border border-zinc-300 p-3 text-sm focus-visible:outline-2 focus-visible:outline-blue-600"
           />
@@ -332,8 +311,6 @@ function CurrentFork({
           id="why"
           type="text"
           value={draft.why}
-          readOnly={readOnly}
-          title={readOnly ? READ_ONLY : undefined}
           onChange={(e) => setDraft((d) => ({ ...d, why: e.target.value }))}
           className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm focus-visible:outline-2 focus-visible:outline-blue-600"
         />
@@ -352,12 +329,10 @@ function OptionCard({
   option,
   draft,
   setDraft,
-  readOnly,
 }: {
   option: Option;
   draft: Draft;
   setDraft: (change: (d: Draft) => Draft) => void;
-  readOnly: boolean;
 }) {
   const selected = draft.selected === "option" && draft.optionId === option.id;
   const edit = draft.edits[option.id];
@@ -408,9 +383,7 @@ function OptionCard({
           type="button"
           aria-pressed={selected}
           onClick={toggleSelect}
-          disabled={readOnly}
-          title={readOnly ? READ_ONLY : undefined}
-          className="flex-1 rounded-md text-left disabled:cursor-not-allowed focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-blue-600"
+          className="flex-1 rounded-md text-left focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-blue-600"
         >
           <span className="block text-xs font-medium text-zinc-600">Option {option.id}</span>
           <span className="mt-1 block font-semibold text-zinc-900">{title}</span>
@@ -421,7 +394,7 @@ function OptionCard({
         <li><span aria-hidden="true">✅</span> <span className="sr-only">Upside:</span> {option.upside}</li>
         <li><span aria-hidden="true">⚠️</span> <span className="sr-only">Downside:</span> {option.downside}</li>
       </ul>
-      {selected && !readOnly && (
+      {selected && (
         <button type="button" onClick={() => setEditing(!editing)} className={`${btn.link} mt-3 self-start`}>
           {editing ? "Done editing" : "Edit"}
         </button>

@@ -45,7 +45,6 @@ export function useSession() {
     addFile: ctx.store.addFile,
     removeFile: ctx.store.removeFile,
     mode: ctx.mode,
-    readOnly: ctx.mode === "demo", // the demo is read-only (Ran, Phase 2 answers)
     base: ctx.base,
     setupHref: ctx.setupHref,
   };
