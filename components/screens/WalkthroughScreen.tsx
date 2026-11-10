@@ -5,6 +5,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
+import { MockupPhone } from "@/components/Mockup";
 import { useSession } from "@/components/SessionProvider";
 import { AiError, AiLoading, btn, RiskBadge, SaveWarning, StatusPill } from "@/components/ui";
 import { fetchOptions } from "@/lib/ai-client";
@@ -226,6 +227,7 @@ function CurrentFork({
 }) {
   const result = session.options[fork.id];
   const status = useAiStatus(`options:${fork.id}`);
+  const { mode } = useSession();
   const toggle = (kind: "own" | "later" | "ai") =>
     setDraft((d) => ({ ...d, selected: d.selected === kind ? null : kind, optionId: null, editing: false }));
 
@@ -242,11 +244,25 @@ function CurrentFork({
       </div>
 
       {result && result.options.length > 0 ? (
-        <div className="mt-8 grid grid-cols-3 gap-4">
-          {result.options.map((opt) => (
-            <OptionCard key={opt.id} option={opt} draft={draft} setDraft={setDraft} />
-          ))}
-        </div>
+        <>
+          <div className="mt-8 grid grid-cols-3 gap-4">
+            {result.options.map((opt) => (
+              <OptionCard key={opt.id} option={opt} draft={draft} setDraft={setDraft} />
+            ))}
+          </div>
+          {/* A live mockup under each option card: Ladle's look in the demo, a wireframe live. */}
+          {result.options.some((o) => o.mockup) && (
+            <div className="mt-4 grid grid-cols-3 gap-4">
+              {result.options.map((opt) =>
+                opt.mockup ? (
+                  <MockupPhone key={opt.id} mockup={opt.mockup} look={mode === "demo" ? "ladle" : "wireframe"} label={`Option ${opt.id}`} />
+                ) : (
+                  <div key={opt.id} />
+                ),
+              )}
+            </div>
+          )}
+        </>
       ) : status?.state === "loading" ? (
         // D3: three grey placeholder cards while Claude thinks.
         <div className="mt-8">

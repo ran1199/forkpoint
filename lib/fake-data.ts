@@ -2,7 +2,103 @@
 // The three forks' moments, screens and risks come from the brief (CLAUDE.md).
 // Questions and "What the PRD says" lines were added from the Ladle PRD.
 
-import type { Fork, OptionsResult, Session } from "./types";
+import type { Fork, Mockup, MockupElement, OptionsResult, Session } from "./types";
+
+// ---------- Demo mockups (drawn in the Ladle prototype's look) ----------
+// Content follows the Ladle prototype (ladle-prototype.vercel.app): Maya, a
+// 1,600 kcal budget, Chicken adobo at 420 kcal per serving, confidence labels.
+
+const el = (kind: MockupElement["kind"], text: string, detail = "", layer: MockupElement["layer"] = "screen"): MockupElement => ({
+  kind,
+  text,
+  detail,
+  layer,
+});
+const tabs = (active: string) => el("tabs", "Today, Recipes, 📷, Pantry, Me", active);
+const mock = (screen: string, elements: MockupElement[]): Mockup => ({ screen, elements });
+
+const MOCKUPS = {
+  f1: {
+    A: mock("Onboarding, last step", [
+      el("heading", "Import your first recipe", "Teach Ladle a dish once, then log it with one tap."),
+      el("card", "Paste a link or text", "From a cooking video or recipe site"),
+      el("card", "Photograph a recipe card", "Handwritten card or cookbook page"),
+      el("button", "Import a recipe"),
+      el("secondary_button", "Not now"),
+    ]),
+    B: mock("Import (opens after setup)", [
+      el("heading", "Add your first recipe", "Home opens once it's saved."),
+      el("input", "Paste a link or recipe text", "Link or text"),
+      el("button", "Import"),
+      el("secondary_button", "Photograph a recipe card"),
+      el("text", "Ladle reads the ingredients and asks about anything vague."),
+    ]),
+    C: mock("Home", [
+      el("heading", "Welcome, Maya.", "Tuesday, November 10"),
+      el("number", "1,600 left", "0 eaten of 1,600"),
+      el("card", "Import your first recipe", "Paste a link, text or a recipe card"),
+      el("button", "Import a recipe"),
+      el("secondary_button", "Add other food"),
+      tabs("Today"),
+    ]),
+  },
+  f2: {
+    A: mock("Recipes", [
+      el("heading", "Recipes"),
+      el("card", "Chicken adobo", "420 kcal per serving · 4 servings"),
+      el("badge", "Your recipe ✓", "confirmed"),
+      el("card", "Turkey chili", "380 kcal per serving · 6 servings"),
+      el("badge", "Your recipe ✓", "confirmed"),
+      el("text", "Chicken adobo logged · 420 kcal", "Undo · Adjust", "toast"),
+      tabs("Recipes"),
+    ]),
+    B: mock("Recipes, portion sheet", [
+      el("heading", "Recipes"),
+      el("card", "Chicken adobo", "420 kcal per serving · 4 servings"),
+      el("card", "Turkey chili", "380 kcal per serving · 6 servings"),
+      el("card", "Chicken adobo", "Your usual: 1 serving", "sheet"),
+      el("chips", "½, 1, 1½, 2", "1", "sheet"),
+      el("button", "Log · 420", "", "sheet"),
+      tabs("Recipes"),
+    ]),
+    C: mock("Recipes", [
+      el("heading", "Recipes"),
+      el("card", "Chicken adobo", "Confirmed 3+ times · logs instantly"),
+      el("badge", "Your recipe ✓", "confirmed"),
+      el("card", "Kimchi fried rice", "Newer recipe · shows the portion sheet"),
+      el("badge", "Good estimate", "good"),
+      el("text", "Chicken adobo logged · 420 kcal", "Undo", "toast"),
+      tabs("Recipes"),
+    ]),
+  },
+  f3: {
+    A: mock("Home", [
+      el("heading", "Today"),
+      el("number", "203 left", "1,397 eaten of 1,600"),
+      el("list_item", "Overnight oats · Your recipe ✓", "352 kcal"),
+      el("list_item", "Chicken adobo · Good estimate", "418 kcal"),
+      el("list_item", "Restaurant ramen · Rough estimate", "627 kcal"),
+      tabs("Today"),
+    ]),
+    B: mock("Home", [
+      el("heading", "Today"),
+      el("number", "200 left", "1,400 eaten of 1,600"),
+      el("list_item", "Overnight oats · Your recipe ✓", "350 kcal"),
+      el("list_item", "Chicken adobo · Good estimate", "420 kcal"),
+      el("list_item", "Restaurant ramen · Rough estimate", "630 kcal"),
+      el("list_item", "Quick fix: more oil", "+240 kcal"),
+      tabs("Today"),
+    ]),
+    C: mock("Home", [
+      el("heading", "Today"),
+      el("number", "about 200 left", "about 1,400 eaten of 1,600"),
+      el("list_item", "Overnight oats · Your recipe ✓", "352 kcal"),
+      el("list_item", "Chicken adobo · Good estimate", "about 420 kcal"),
+      el("list_item", "Restaurant ramen · Rough estimate", "about 650 kcal"),
+      tabs("Today"),
+    ]),
+  },
+};
 
 export const FAKE_PRODUCT_NAME = "Ladle";
 export const FAKE_PRIMARY_USER = "Maya";
@@ -50,6 +146,7 @@ export const FAKE_OPTIONS: Record<string, OptionsResult> = {
           "Onboarding ends on a screen offering \"Import a recipe\" (link, text or recipe card) or \"Not now\"; Not now opens Home with calories left and no meals yet.",
         upside: "Follows F1's invitation exactly",
         downside: "An extra screen before Maya reaches Home",
+        mockup: MOCKUPS.f1.A,
       },
       {
         id: "B",
@@ -58,6 +155,7 @@ export const FAKE_OPTIONS: Record<string, OptionsResult> = {
           "The last onboarding step opens the import screen directly, and Home appears once her first recipe is saved.",
         upside: "Starts the core loop and recipe-based logging right away",
         downside: "Risks missing the under-2-minutes-to-Home target",
+        mockup: MOCKUPS.f1.B,
       },
       {
         id: "C",
@@ -66,6 +164,7 @@ export const FAKE_OPTIONS: Record<string, OptionsResult> = {
           "Onboarding ends on Home: calories left today shows, and where today's meals would be, a card invites her to import her first recipe.",
         upside: "Reaches Home fast and keeps the invitation in view",
         downside: "The card competes with snap a plate and add other food",
+        mockup: MOCKUPS.f1.C,
       },
     ],
     recommended: "C",
@@ -80,6 +179,7 @@ export const FAKE_OPTIONS: Record<string, OptionsResult> = {
         description: "Tapping logs your usual portion right away; a toast offers Undo and Adjust.",
         upside: "Meets the 2-tap target",
         downside: "Easy to log the wrong portion",
+        mockup: MOCKUPS.f2.A,
       },
       {
         id: "B",
@@ -87,6 +187,7 @@ export const FAKE_OPTIONS: Record<string, OptionsResult> = {
         description: "Tapping opens ½ / 1 / 1½ / 2, set to your usual; then tap Log.",
         upside: "Always accurate",
         downside: "3 taps, misses the target",
+        mockup: MOCKUPS.f2.B,
       },
       {
         id: "C",
@@ -94,6 +195,7 @@ export const FAKE_OPTIONS: Record<string, OptionsResult> = {
         description: "Recipes confirmed 3+ times log instantly; newer ones show the portion sheet.",
         upside: "Fast where trust is earned",
         downside: "Behaves differently between recipes",
+        mockup: MOCKUPS.f2.C,
       },
     ],
     recommended: "C",
@@ -109,6 +211,7 @@ export const FAKE_OPTIONS: Record<string, OptionsResult> = {
           "Every screen shows the calculated value, for example 487 kcal, and the confidence label carries the uncertainty.",
         upside: "Same dish, same number, easy to check against the recipe card",
         downside: "Looks precise even on a rough estimate (problem P6)",
+        mockup: MOCKUPS.f3.A,
       },
       {
         id: "B",
@@ -117,6 +220,7 @@ export const FAKE_OPTIONS: Record<string, OptionsResult> = {
           "Every number rounds to the nearest 10 kcal, for example 490 kcal, including calories left today and fix effects like +240 kcal.",
         upside: "One simple number that doesn't overclaim accuracy",
         downside: "Rounded meals may not add up exactly to the day's total",
+        mockup: MOCKUPS.f3.B,
       },
       {
         id: "C",
@@ -125,6 +229,7 @@ export const FAKE_OPTIONS: Record<string, OptionsResult> = {
           "\"Rough estimate\" rounds to the nearest 50 kcal, \"Good estimate\" to the nearest 10, and \"Your recipe ✓\" shows the exact value.",
         upside: "Precision is earned, as in \"Show confidence, earn precision\"",
         downside: "A dish's number changes shape as its confidence rises",
+        mockup: MOCKUPS.f3.C,
       },
     ],
     recommended: "C",

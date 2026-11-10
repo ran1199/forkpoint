@@ -20,6 +20,31 @@ export const ForksResultSchema = z.object({
   hard_requirements: z.array(z.string()),
 });
 
+export const MockupSchema = z.object({
+  screen: z.string(),
+  elements: z.array(
+    z.object({
+      kind: z.enum([
+        "heading",
+        "text",
+        "number",
+        "card",
+        "list_item",
+        "button",
+        "secondary_button",
+        "chips",
+        "input",
+        "image",
+        "badge",
+        "tabs",
+      ]),
+      text: z.string(),
+      detail: z.string(),
+      layer: z.enum(["screen", "sheet", "toast"]),
+    }),
+  ),
+});
+
 export const OptionsResultSchema = z.object({
   options: z
     .array(
@@ -29,6 +54,7 @@ export const OptionsResultSchema = z.object({
         description: z.string(),
         upside: z.string(),
         downside: z.string(),
+        mockup: MockupSchema,
       }),
     )
     .min(2)
