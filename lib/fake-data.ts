@@ -1,7 +1,8 @@
 // Phase 2 fake data, taken word for word from the Ladle example in CLAUDE.md.
 // It stands in for Claude's answers until the AI is connected in Phase 3.
-// Only fork 2 has options. Ran asked for one of them to be marked as the AI
-// recommendation so "Fine, let the AI decide" works in the fake data; C was picked.
+// Fork 2's options come word for word from the brief; C is marked as the AI
+// recommendation (Ran's request). Ran later asked for A/B/C options on every demo
+// fork: the options for forks 1 and 3 were drafted by Claude and are easy to edit here.
 
 import type { Fork, OptionsResult, Session } from "./types";
 
@@ -39,6 +40,34 @@ export const FAKE_FORKS: Fork[] = [
 ];
 
 export const FAKE_OPTIONS: Record<string, OptionsResult> = {
+  // Drafted by Claude at Ran's request (not from the Ladle PRD).
+  f1: {
+    options: [
+      {
+        id: "A",
+        title: "Empty state + one button",
+        description: "Home shows a short message and one large \"Add your first recipe\" button.",
+        upside: "One clear next step",
+        downside: "Nothing to log until a recipe is added",
+      },
+      {
+        id: "B",
+        title: "Starter recipes",
+        description: "Home comes with a few sample home-cooked dishes that Maya can log right away or replace.",
+        upside: "One-tap logging can be tried immediately",
+        downside: "Samples may not match what Maya actually cooks",
+      },
+      {
+        id: "C",
+        title: "Guided first recipe",
+        description: "Right after setup, a short guided step helps Maya add her most-cooked dish, then Home opens with it ready to log.",
+        upside: "Home is personal from day one",
+        downside: "Adds a step before Maya reaches Home",
+      },
+    ],
+    recommended: "A",
+    recommended_reason: "Fake data: keeps first use simple and leads straight to adding the recipe Maya will log most.",
+  },
   f2: {
     options: [
       {
@@ -66,6 +95,34 @@ export const FAKE_OPTIONS: Record<string, OptionsResult> = {
     recommended: "C",
     recommended_reason:
       "Fake data: keeps familiar recipes within the 2-tap target while still offering a portion check where mistakes are likely.",
+  },
+  // Drafted by Claude at Ran's request (not from the Ladle PRD).
+  f3: {
+    options: [
+      {
+        id: "A",
+        title: "Exact everywhere",
+        description: "Every screen shows the calculated number, for example 487 kcal.",
+        upside: "Matches the calculation exactly",
+        downside: "Looks more precise than a home-cooked estimate is",
+      },
+      {
+        id: "B",
+        title: "Rounded everywhere",
+        description: "Every number is rounded to the nearest 10 kcal, for example 490 kcal, including daily totals.",
+        upside: "Easier to read and honest about estimates",
+        downside: "Rounded items may not add up exactly to the rounded total",
+      },
+      {
+        id: "C",
+        title: "Rounded, exact on tap",
+        description: "Numbers are shown rounded; tapping one reveals the exact value.",
+        upside: "Easy to scan, with detail when wanted",
+        downside: "Two numbers for the same thing can confuse",
+      },
+    ],
+    recommended: "B",
+    recommended_reason: "Fake data: home-cooked calories are estimates, so rounded numbers read faster and more honestly.",
   },
 };
 
