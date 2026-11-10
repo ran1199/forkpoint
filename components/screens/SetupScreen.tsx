@@ -5,9 +5,11 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useSession } from "@/components/SessionProvider";
-import { btn, SaveWarning } from "@/components/ui";
-import { withFakeForks } from "@/lib/fake-data";
-import type { Sketch } from "@/lib/types";
+import { AiError, AiLoading, btn, SaveWarning } from "@/components/ui";
+import { findForks } from "@/lib/ai-client";
+import { setAiStatus, useAiStatus } from "@/lib/ai-status";
+import { LENS_ORDER } from "@/lib/session";
+import type { Fork, Sketch } from "@/lib/types";
 
 const MAX_PDF_BYTES = 2 * 1024 * 1024; // under 2 MB
 const MAX_SKETCHES = 5;
@@ -23,7 +25,7 @@ function readAsDataUrl(file: File): Promise<string> {
 }
 
 /** D2: shrink to max 1568 px on the long edge and save as JPEG, in the browser. */
-async function resizeToJpeg(file: File): Promise<Omit<Sketch, "id" | "name">> {
+async function resizeToJpeg(file: File): Promise<Omit<Sketch, "id" | "name"> & { dataUrl: string }> {
   const bitmap = await createImageBitmap(file);
   const scale = Math.min(1, MAX_EDGE / Math.max(bitmap.width, bitmap.height));
   const width = Math.round(bitmap.width * scale);
@@ -44,8 +46,9 @@ function formatMb(bytes: number) {
 }
 
 export function SetupScreen() {
-  const { session, update, saveFailed, base } = useSession();
+  const { session, update, saveFailed, files, addFile, removeFile, mode, base } = useSession();
   const router = useRouter();
+  const status = useAiStatus("forks");
   const [pdfError, setPdfError] = useState("");
   const [sketchError, setSketchError] = useState("");
 
@@ -60,7 +63,10 @@ export function SetupScreen() {
       return setPdfError(`That PDF is ${formatMb(file.size)}. Please use a PDF under 2 MB.`);
     setPdfError("");
     const dataUrl = await readAsDataUrl(file);
-    update((s) => ({ ...s, prdPdf: { name: file.name, size: file.size, dataUrl } }));
+    const id = crypto.randomUUID();
+    if (!(await addFile(id, dataUrl))) return;
+    if (session.prdPdf) removeFile(session.prdPdf.id);
+    update((s) => ({ ...s, prdPdf: { id, name: file.name, size: file.size } }));
   }
 
   async function onSketches(e: React.ChangeEvent<HTMLInputElement>) {
@@ -77,7 +83,9 @@ export function SetupScreen() {
     const added: Sketch[] = [];
     for (const file of images.slice(0, Math.max(0, room))) {
       try {
-        added.push({ id: crypto.randomUUID(), name: file.name, ...(await resizeToJpeg(file)) });
+        const { dataUrl, width, height } = await resizeToJpeg(file);
+        const id = crypto.randomUUID();
+        if (await addFile(id, dataUrl)) added.push({ id, name: file.name, width, height });
       } catch {
         messages.push(`${file.name} couldn't be read.`);
       }
@@ -86,11 +94,39 @@ export function SetupScreen() {
     if (added.length) update((s) => ({ ...s, sketches: [...s.sketches, ...added].slice(0, MAX_SKETCHES) }));
   }
 
-  function start() {
-    // Phase 2: the fake Ladle forks stand in for Claude's answer (call A, Phase 3).
-    update((s) => (s.forks.length ? s : withFakeForks(s)));
-    router.push(`${base}/walkthrough`);
+  async function start() {
+    // Forks already found (and the demo's recorded forks): go straight to the walkthrough.
+    if (session.forks.length > 0 || mode === "demo") {
+      router.push(`${base}/walkthrough`);
+      return;
+    }
+    // Call A: find the forks.
+    setAiStatus("forks", { state: "loading" });
+    try {
+      const result = await findForks(session, files);
+      // Our own ids, and forks ordered by lens so "Confirm & next" follows the left list.
+      const forks: Fork[] = LENS_ORDER.flatMap((lens) => result.forks.filter((f) => f.lens === lens)).map(
+        (f, i) => ({ ...f, id: `f${i + 1}` }),
+      );
+      update((s) => ({
+        ...s,
+        product_name: result.product_name,
+        primary_user: result.primary_user,
+        forks,
+        hard_requirements: result.hard_requirements,
+        options: {},
+        drafts: {},
+        decisions: {},
+        currentForkId: forks[0]?.id ?? null,
+        export: null,
+      }));
+      setAiStatus("forks", null);
+      router.push(`${base}/walkthrough`);
+    } catch (error) {
+      setAiStatus("forks", { state: "error", detail: error instanceof Error ? error.message : "" });
+    }
   }
+  const loading = status?.state === "loading";
 
   return (
     <main className="mx-auto max-w-4xl px-10 py-12">
@@ -121,7 +157,10 @@ export function SetupScreen() {
               <button
                 type="button"
                 aria-label={`Remove ${session.prdPdf.name}`}
-                onClick={() => update((s) => ({ ...s, prdPdf: null }))}
+                onClick={() => {
+                  removeFile(session.prdPdf!.id);
+                  update((s) => ({ ...s, prdPdf: null }));
+                }}
                 className="rounded px-1 text-zinc-600 hover:bg-zinc-200 hover:text-zinc-900 focus-visible:outline-2 focus-visible:outline-blue-600"
               >
                 ×
@@ -139,11 +178,14 @@ export function SetupScreen() {
           {session.sketches.map((sk) => (
             <figure key={sk.id} className="relative h-32 w-32 overflow-hidden rounded-md border border-zinc-200 bg-zinc-50">
               {/* eslint-disable-next-line @next/next/no-img-element -- local data URL thumbnail */}
-              <img src={sk.dataUrl} alt={sk.name} className="h-full w-full object-cover" />
+              <img src={files[sk.id]} alt={sk.name} className="h-full w-full object-cover" />
               <button
                 type="button"
                 aria-label={`Remove ${sk.name}`}
-                onClick={() => update((s) => ({ ...s, sketches: s.sketches.filter((x) => x.id !== sk.id) }))}
+                onClick={() => {
+                  removeFile(sk.id);
+                  update((s) => ({ ...s, sketches: s.sketches.filter((x) => x.id !== sk.id) }));
+                }}
                 className="absolute right-1 top-1 flex h-7 w-7 items-center justify-center rounded-full bg-white/90 text-zinc-800 shadow hover:bg-white focus-visible:outline-2 focus-visible:outline-blue-600"
               >
                 ×
@@ -160,10 +202,12 @@ export function SetupScreen() {
         {sketchError && <p role="alert" className="mt-2 text-sm text-red-700">{sketchError}</p>}
       </section>
 
-      <div className="mt-12">
-        <button type="button" className={btn.primary} disabled={!hasPrd} onClick={start}>
+      <div className="mt-12 space-y-4">
+        <button type="button" className={btn.primary} disabled={!hasPrd || loading} onClick={start}>
           Start walkthrough
         </button>
+        {loading && <AiLoading label="Finding the open decisions in your PRD… This can take a minute." />}
+        {status?.state === "error" && <AiError detail={status.detail} onRetry={start} />}
       </div>
     </main>
   );

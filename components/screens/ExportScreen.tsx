@@ -7,7 +7,7 @@ import { useSession } from "@/components/SessionProvider";
 import { btn, CopyButton, downloadFile } from "@/components/ui";
 
 export function ExportScreen() {
-  const { session, base } = useSession();
+  const { session, files, base } = useSession();
   const result = session.export;
 
   if (!result) {
@@ -58,7 +58,10 @@ export function ExportScreen() {
 
       <div className="mt-12">
         <button type="button" className={btn.primary}
-          onClick={() => downloadFile("forkpoint-session.json", JSON.stringify(session, null, 2), "application/json")}>
+          onClick={() =>
+            // The whole session, including uploaded files, so it can become /data/demo-session.json (D12).
+            downloadFile("forkpoint-session.json", JSON.stringify({ ...session, files }, null, 2), "application/json")
+          }>
           Download session
         </button>
       </div>

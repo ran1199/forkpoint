@@ -1,6 +1,7 @@
 // Phase 2 fake data, taken word for word from the Ladle example in CLAUDE.md.
 // It stands in for Claude's answers until the AI is connected in Phase 3.
-// Only fork 2 has options. The brief names no recommended option, so there is none.
+// Only fork 2 has options. Ran asked for one of them to be marked as the AI
+// recommendation so "Fine, let the AI decide" works in the fake data; C was picked.
 
 import type { Fork, OptionsResult, Session } from "./types";
 
@@ -62,8 +63,9 @@ export const FAKE_OPTIONS: Record<string, OptionsResult> = {
         downside: "Behaves differently between recipes",
       },
     ],
-    recommended: null,
-    recommended_reason: "",
+    recommended: "C",
+    recommended_reason:
+      "Fake data: keeps familiar recipes within the 2-tap target while still offering a portion check where mistakes are likely.",
   },
 };
 

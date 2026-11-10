@@ -4,8 +4,11 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 import { useSession } from "@/components/SessionProvider";
-import { btn, RiskBadge, SaveWarning, StatusPill } from "@/components/ui";
+import { AiError, AiLoading, btn, RiskBadge, SaveWarning, StatusPill } from "@/components/ui";
+import { fetchOptions } from "@/lib/ai-client";
+import { getAiStatus, setAiStatus, useAiStatus } from "@/lib/ai-status";
 import {
   decisionStatus,
   describeChoice,
@@ -16,9 +19,38 @@ import {
 } from "@/lib/session";
 import type { Choice, Draft, Fork, Option, Session } from "@/lib/types";
 
+/** Call B for one fork. The answer is saved under that fork, even if the designer has moved on. */
+async function requestOptions(
+  getSession: () => Session,
+  files: Record<string, string>,
+  update: (change: (s: Session) => Session) => void,
+  forkId: string,
+) {
+  const key = `options:${forkId}`;
+  const fork = getSession().forks.find((f) => f.id === forkId);
+  if (!fork || getAiStatus(key)?.state === "loading") return;
+  setAiStatus(key, { state: "loading" });
+  try {
+    const result = await fetchOptions(getSession(), files, fork);
+    update((s) => ({ ...s, options: { ...s.options, [forkId]: result } }));
+    setAiStatus(key, null);
+  } catch (error) {
+    setAiStatus(key, { state: "error", detail: error instanceof Error ? error.message : "" });
+  }
+}
+
 export function WalkthroughScreen() {
-  const { session, update, saveFailed, base } = useSession();
+  const { session, getSession, update, saveFailed, files, mode, base } = useSession();
   const router = useRouter();
+
+  const currentForkId = session.currentForkId ?? session.forks[0]?.id ?? null;
+  // D3: call B runs when the designer arrives at a fork (live mode only; demo makes no calls).
+  const needsOptions = mode === "app" && currentForkId !== null && !session.options[currentForkId];
+  useEffect(() => {
+    if (!needsOptions || !currentForkId) return;
+    if (getAiStatus(`options:${currentForkId}`)) return; // already loading, or failed: wait for Retry
+    void requestOptions(getSession, files, update, currentForkId);
+  }, [needsOptions, currentForkId, getSession, files, update]);
 
   if (session.forks.length === 0) {
     return (
@@ -74,6 +106,10 @@ export function WalkthroughScreen() {
           setDraft={setDraft}
           canConfirm={choiceFromDraft(session, fork, draft) !== null}
           onConfirm={confirmAndNext}
+          onRetry={() => {
+            setAiStatus(`options:${fork.id}`, null);
+            void requestOptions(getSession, files, update, fork.id);
+          }}
         />
       </main>
       <DecisionLog session={session} />
@@ -101,16 +137,9 @@ function choiceFromDraft(session: Session, fork: Fork, draft: Draft): Choice | n
     case "later":
       return { kind: "later" };
     case "ai": {
-      // D6: save Claude's recommended option. The fake data has no recommendation.
+      // D6: save call B's recommended option (nothing to save until options have loaded).
       const rec = result?.options.find((o) => o.id === result.recommended);
-      return rec
-        ? { kind: "ai", optionId: rec.id, title: rec.title, description: rec.description }
-        : {
-            kind: "ai",
-            optionId: null,
-            title: "[PLACEHOLDER: Claude's recommended option]",
-            description: "The fake data has no recommendation. From Phase 3, Claude's recommended option is saved here.",
-          };
+      return rec ? { kind: "ai", optionId: rec.id, title: rec.title, description: rec.description } : null;
     }
     default:
       return null;
@@ -185,6 +214,7 @@ function CurrentFork({
   setDraft,
   canConfirm,
   onConfirm,
+  onRetry,
 }: {
   session: Session;
   fork: Fork;
@@ -192,8 +222,10 @@ function CurrentFork({
   setDraft: (change: (d: Draft) => Draft) => void;
   canConfirm: boolean;
   onConfirm: () => void;
+  onRetry: () => void;
 }) {
   const result = session.options[fork.id];
+  const status = useAiStatus(`options:${fork.id}`);
   const toggle = (kind: "own" | "later" | "ai") =>
     setDraft((d) => ({ ...d, selected: d.selected === kind ? null : kind, optionId: null, editing: false }));
 
@@ -204,7 +236,7 @@ function CurrentFork({
       <div className="mt-4 flex flex-wrap items-center gap-3">
         <p className="text-sm text-zinc-700">
           <span className="font-medium text-zinc-900">What the PRD says:</span>{" "}
-          {fork.prd_says || <span className="text-zinc-600">Not in the fake data.</span>}
+          {fork.prd_says || <span className="text-zinc-600">Not recorded.</span>}
         </p>
         <RiskBadge risk={fork.risk} />
       </div>
@@ -215,9 +247,25 @@ function CurrentFork({
             <OptionCard key={opt.id} option={opt} draft={draft} setDraft={setDraft} />
           ))}
         </div>
+      ) : status?.state === "loading" ? (
+        // D3: three grey placeholder cards while Claude thinks.
+        <div className="mt-8">
+          <div aria-hidden="true" className="grid grid-cols-3 gap-4">
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="h-56 animate-pulse rounded-lg bg-zinc-100" />
+            ))}
+          </div>
+          <div className="mt-3">
+            <AiLoading label="Thinking through options…" />
+          </div>
+        </div>
+      ) : status?.state === "error" ? (
+        <div className="mt-8">
+          <AiError detail={status.detail} onRetry={onRetry} />
+        </div>
       ) : (
         <p className="mt-8 rounded-md border border-dashed border-zinc-300 px-4 py-6 text-sm text-zinc-600">
-          No options in the fake data for this fork. From Phase 3, Claude suggests options here.
+          No options were recorded for this fork.
         </p>
       )}
 
@@ -235,6 +283,12 @@ function CurrentFork({
           Fine, let the AI decide
         </button>
       </div>
+
+      {draft.selected === "ai" && !result?.options.some((o) => o.id === result.recommended) && (
+        <p className="mt-4 text-sm text-zinc-700">
+          There&apos;s no recommendation to save yet, because no options have loaded for this fork.
+        </p>
+      )}
 
       {draft.selected === "own" && (
         <div className="mt-4">

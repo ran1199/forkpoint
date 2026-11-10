@@ -49,8 +49,9 @@ export type Draft = {
   why: string;
 };
 
-export type UploadedPdf = { name: string; size: number; dataUrl: string };
-export type Sketch = { id: string; name: string; dataUrl: string; width: number; height: number };
+// File contents live in IndexedDB (lib/file-db.ts), looked up by id.
+export type UploadedPdf = { id: string; name: string; size: number };
+export type Sketch = { id: string; name: string; width: number; height: number };
 
 export type Session = {
   version: 1;

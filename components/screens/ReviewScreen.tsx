@@ -5,14 +5,17 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useSession } from "@/components/SessionProvider";
-import { btn, SaveWarning, StatusPill } from "@/components/ui";
+import { AiError, AiLoading, btn, SaveWarning, StatusPill } from "@/components/ui";
+import { writePrompt } from "@/lib/ai-client";
+import { setAiStatus, useAiStatus } from "@/lib/ai-status";
 import { FAKE_EXPORT } from "@/lib/fake-data";
 import { decisionStatus, describeChoice, groupByLens, LENS_LABEL } from "@/lib/session";
 import type { Fork } from "@/lib/types";
 
 export function ReviewScreen() {
-  const { session, update, saveFailed, base } = useSession();
+  const { session, update, saveFailed, files, mode, base } = useSession();
   const router = useRouter();
+  const status = useAiStatus("prompt");
 
   if (session.forks.length === 0) {
     return (
@@ -31,11 +34,25 @@ export function ReviewScreen() {
     router.push(`${base}/walkthrough`);
   }
 
-  function generate() {
-    // Phase 2: placeholder text. From Phase 3, call C writes the prompt and checklist.
-    update((s) => ({ ...s, export: FAKE_EXPORT }));
-    router.push(`${base}/export`);
+  async function generate() {
+    if (mode === "demo") {
+      // Demo makes no AI calls: it shows the recorded (Phase 2: placeholder) export.
+      update((s) => ({ ...s, export: s.export ?? FAKE_EXPORT }));
+      router.push(`${base}/export`);
+      return;
+    }
+    // Call C: write the Claude Code prompt and checklist.
+    setAiStatus("prompt", { state: "loading" });
+    try {
+      const result = await writePrompt(session, files);
+      update((s) => ({ ...s, export: result }));
+      setAiStatus("prompt", null);
+      router.push(`${base}/export`);
+    } catch (error) {
+      setAiStatus("prompt", { state: "error", detail: error instanceof Error ? error.message : "" });
+    }
   }
+  const loading = status?.state === "loading";
 
   const later = session.forks.filter((f) => session.decisions[f.id]?.choice.kind === "later");
 
@@ -93,10 +110,12 @@ export function ReviewScreen() {
         </section>
       ))}
 
-      <div className="mt-12">
-        <button type="button" className={btn.primary} onClick={generate}>
+      <div className="mt-12 space-y-4">
+        <button type="button" className={btn.primary} disabled={loading} onClick={generate}>
           Generate prompt
         </button>
+        {loading && <AiLoading label="Writing your Claude Code prompt and checklist… This can take a minute." />}
+        {status?.state === "error" && <AiError detail={status.detail} onRetry={generate} />}
       </div>
     </main>
   );

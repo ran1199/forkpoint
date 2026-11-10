@@ -3,7 +3,8 @@
 // Live (/app) and demo (/demo) use separate storage so they never mix.
 
 import { withFakeForks } from "./fake-data";
-import type { Choice, Decision, Draft, Fork, Lens, Mode, Session } from "./types";
+import { deleteFile, loadFiles, saveFile } from "./file-db";
+import type { Choice, Decision, Draft, Fork, Lens, Mode, Session, Sketch, UploadedPdf } from "./types";
 
 const STORAGE_KEY: Record<Mode, string> = {
   app: "forkpoint:session",
@@ -52,35 +53,101 @@ function loadSession(mode: Mode): Session {
   }
 }
 
-/** A tiny store: holds the session, saves it on every change, tells screens to redraw. */
+/**
+ * A tiny store: holds the session, saves it on every change (localStorage),
+ * keeps uploaded files in IndexedDB, and tells screens to redraw.
+ */
 export type SessionStore = {
   get: () => Session;
   update: (change: (s: Session) => Session) => void;
   subscribe: (listener: () => void) => () => void;
   saveFailed: () => boolean;
+  files: () => Record<string, string>; // file id -> data URL
+  addFile: (id: string, dataUrl: string) => Promise<boolean>;
+  removeFile: (id: string) => void;
 };
 
-export function createSessionStore(mode: Mode): SessionStore {
+export async function loadSessionStore(mode: Mode): Promise<SessionStore> {
   let session = loadSession(mode);
+  let files: Record<string, string> = {};
   let failed = false;
   const listeners = new Set<() => void>();
+  const notify = () => listeners.forEach((l) => l());
+  const prefix = `${mode}:`;
+
+  function persist() {
+    try {
+      localStorage.setItem(STORAGE_KEY[mode], JSON.stringify(session));
+      failed = false;
+    } catch {
+      failed = true;
+    }
+  }
+
+  try {
+    files = await loadFiles(prefix);
+  } catch {
+    failed = true; // IndexedDB unavailable (e.g. some private-browsing modes)
+  }
+
+  // Sessions saved before files moved to IndexedDB kept them inline: move them.
+  type Legacy = { dataUrl?: string; id?: string };
+  const legacyPdf = session.prdPdf as (UploadedPdf & Legacy) | null;
+  const legacySketches = session.sketches as (Sketch & Legacy)[];
+  if (legacyPdf?.dataUrl || legacySketches.some((sk) => sk.dataUrl)) {
+    const moves: [string, string][] = [];
+    let prdPdf = legacyPdf;
+    if (legacyPdf?.dataUrl) {
+      const id = legacyPdf.id ?? crypto.randomUUID();
+      moves.push([id, legacyPdf.dataUrl]);
+      prdPdf = { id, name: legacyPdf.name, size: legacyPdf.size };
+    }
+    const sketches = legacySketches.map((sk) => {
+      if (!sk.dataUrl) return sk;
+      moves.push([sk.id, sk.dataUrl]);
+      return { id: sk.id, name: sk.name, width: sk.width, height: sk.height };
+    });
+    try {
+      await Promise.all(moves.map(([id, url]) => saveFile(prefix + id, url)));
+      moves.forEach(([id, url]) => (files[id] = url));
+      session = { ...session, prdPdf, sketches };
+      persist();
+    } catch {
+      failed = true;
+    }
+  }
+
   return {
     get: () => session,
     update(change) {
       session = change(session);
-      try {
-        localStorage.setItem(STORAGE_KEY[mode], JSON.stringify(session));
-        failed = false;
-      } catch {
-        failed = true; // usually: the browser's storage is full
-      }
-      listeners.forEach((l) => l());
+      persist();
+      notify();
     },
     subscribe(listener) {
       listeners.add(listener);
       return () => listeners.delete(listener);
     },
     saveFailed: () => failed,
+    files: () => files,
+    async addFile(id, dataUrl) {
+      try {
+        await saveFile(prefix + id, dataUrl);
+        files = { ...files, [id]: dataUrl };
+        failed = false;
+        return true;
+      } catch {
+        failed = true; // usually: the browser's storage is full
+        notify();
+        return false;
+      }
+    },
+    removeFile(id) {
+      const next = { ...files };
+      delete next[id];
+      files = next;
+      deleteFile(prefix + id).catch(() => {});
+    },
   };
 }
 

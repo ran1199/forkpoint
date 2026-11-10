@@ -80,3 +80,26 @@ export function SaveWarning({ failed }: { failed: boolean }) {
     </p>
   );
 }
+
+/** Every AI wait says what's happening (whole-app rule). */
+export function AiLoading({ label }: { label: string }) {
+  return (
+    <p role="status" className="flex items-center gap-2 text-sm text-zinc-700">
+      <span aria-hidden="true" className="h-3 w-3 animate-spin rounded-full border-2 border-zinc-300 border-t-zinc-700" />
+      {label}
+    </p>
+  );
+}
+
+/** D8: plain message + Retry. Never clears what the designer entered. */
+export function AiError({ detail, onRetry }: { detail: string; onRetry: () => void }) {
+  return (
+    <div role="alert" className="rounded-md border border-red-200 bg-red-50 px-4 py-3">
+      <p className="text-sm font-medium text-red-800">Couldn&apos;t reach Claude. Your work is saved.</p>
+      {detail && <p className="mt-1 text-sm text-red-800">{detail}</p>}
+      <button type="button" className={`${btn.secondary} mt-3`} onClick={onRetry}>
+        Retry
+      </button>
+    </div>
+  );
+}
