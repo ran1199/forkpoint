@@ -1,8 +1,6 @@
-// Phase 2 fake data, taken word for word from the Ladle example in CLAUDE.md.
-// It stands in for Claude's answers until the AI is connected in Phase 3.
-// Fork 2's options come word for word from the brief; C is marked as the AI
-// recommendation (Ran's request). Ran later asked for A/B/C options on every demo
-// fork: the options for forks 1 and 3 were drafted by Claude and are easy to edit here.
+// Fake Ladle data for the demo (used until /data/demo-session.json exists).
+// The three forks' moments, screens and risks come from the brief (CLAUDE.md).
+// Questions and "What the PRD says" lines were added from the Ladle PRD.
 
 import type { Fork, OptionsResult, Session } from "./types";
 
@@ -15,8 +13,8 @@ export const FAKE_FORKS: Fork[] = [
     lens: "journey",
     screen: "First use",
     moment: "I finished setup but have no recipes yet. What do I see?",
-    question: "",
-    prd_says: "",
+    question: "What does Maya see when onboarding ends and she has no saved recipes yet?",
+    prd_says: 'Onboarding "ends by inviting the user to import her first recipe", but the empty Home isn\'t described.',
     risk: "high",
   },
   {
@@ -24,7 +22,7 @@ export const FAKE_FORKS: Fork[] = [
     lens: "journey",
     screen: "One-tap log",
     moment: "I tap my usual adobo. Does it log right away, or ask about the portion first?",
-    question: "",
+    question: "Does tapping a saved recipe log it immediately, or show the portion adjust first?",
     prd_says: '"under 2 taps from home" and also "quick portion adjust before confirming"',
     risk: "high",
   },
@@ -33,40 +31,46 @@ export const FAKE_FORKS: Fork[] = [
     lens: "app_rule",
     screen: "Everywhere",
     moment: "How are calorie numbers shown: exact or rounded?",
-    question: "",
-    prd_says: "",
+    question: "Are calorie numbers shown exact or rounded, and does it depend on the confidence level?",
+    prd_says: '"One simple number plus a confidence level" and "exact-looking numbers hide errors", but no rounding rule.',
     risk: "med",
   },
 ];
 
+// Fork 2's options are word for word from the brief; C is marked as the AI
+// recommendation (Ran's request). Options for forks 1 and 3 were drafted by Claude
+// at Ran's request, based on the Ladle PRD (F1, F2, F8, principle 4, problem P6).
 export const FAKE_OPTIONS: Record<string, OptionsResult> = {
-  // Drafted by Claude at Ran's request (not from the Ladle PRD).
   f1: {
     options: [
       {
         id: "A",
-        title: "Empty state + one button",
-        description: "Home shows a short message and one large \"Add your first recipe\" button.",
-        upside: "One clear next step",
-        downside: "Nothing to log until a recipe is added",
+        title: "Invite screen, then Home",
+        description:
+          "Onboarding ends on a screen offering \"Import a recipe\" (link, text or recipe card) or \"Not now\"; Not now opens Home with calories left and no meals yet.",
+        upside: "Follows F1's invitation exactly",
+        downside: "An extra screen before Maya reaches Home",
       },
       {
         id: "B",
-        title: "Starter recipes",
-        description: "Home comes with a few sample home-cooked dishes that Maya can log right away or replace.",
-        upside: "One-tap logging can be tried immediately",
-        downside: "Samples may not match what Maya actually cooks",
+        title: "Straight into import",
+        description:
+          "The last onboarding step opens the import screen directly, and Home appears once her first recipe is saved.",
+        upside: "Starts the core loop and recipe-based logging right away",
+        downside: "Risks missing the under-2-minutes-to-Home target",
       },
       {
         id: "C",
-        title: "Guided first recipe",
-        description: "Right after setup, a short guided step helps Maya add her most-cooked dish, then Home opens with it ready to log.",
-        upside: "Home is personal from day one",
-        downside: "Adds a step before Maya reaches Home",
+        title: "Home with an import card",
+        description:
+          "Onboarding ends on Home: calories left today shows, and where today's meals would be, a card invites her to import her first recipe.",
+        upside: "Reaches Home fast and keeps the invitation in view",
+        downside: "The card competes with snap a plate and add other food",
       },
     ],
-    recommended: "A",
-    recommended_reason: "Fake data: keeps first use simple and leads straight to adding the recipe Maya will log most.",
+    recommended: "C",
+    recommended_reason:
+      "Fake data: meets the under-2-minutes-to-Home acceptance while keeping F1's import invitation visible.",
   },
   f2: {
     options: [
@@ -96,33 +100,35 @@ export const FAKE_OPTIONS: Record<string, OptionsResult> = {
     recommended_reason:
       "Fake data: keeps familiar recipes within the 2-tap target while still offering a portion check where mistakes are likely.",
   },
-  // Drafted by Claude at Ran's request (not from the Ladle PRD).
   f3: {
     options: [
       {
         id: "A",
         title: "Exact everywhere",
-        description: "Every screen shows the calculated number, for example 487 kcal.",
-        upside: "Matches the calculation exactly",
-        downside: "Looks more precise than a home-cooked estimate is",
+        description:
+          "Every screen shows the calculated value, for example 487 kcal, and the confidence label carries the uncertainty.",
+        upside: "Same dish, same number, easy to check against the recipe card",
+        downside: "Looks precise even on a rough estimate (problem P6)",
       },
       {
         id: "B",
         title: "Rounded everywhere",
-        description: "Every number is rounded to the nearest 10 kcal, for example 490 kcal, including daily totals.",
-        upside: "Easier to read and honest about estimates",
-        downside: "Rounded items may not add up exactly to the rounded total",
+        description:
+          "Every number rounds to the nearest 10 kcal, for example 490 kcal, including calories left today and fix effects like +240 kcal.",
+        upside: "One simple number that doesn't overclaim accuracy",
+        downside: "Rounded meals may not add up exactly to the day's total",
       },
       {
         id: "C",
-        title: "Rounded, exact on tap",
-        description: "Numbers are shown rounded; tapping one reveals the exact value.",
-        upside: "Easy to scan, with detail when wanted",
-        downside: "Two numbers for the same thing can confuse",
+        title: "Rounding follows confidence",
+        description:
+          "\"Rough estimate\" rounds to the nearest 50 kcal, \"Good estimate\" to the nearest 10, and \"Your recipe ✓\" shows the exact value.",
+        upside: "Precision is earned, as in \"Show confidence, earn precision\"",
+        downside: "A dish's number changes shape as its confidence rises",
       },
     ],
-    recommended: "B",
-    recommended_reason: "Fake data: home-cooked calories are estimates, so rounded numbers read faster and more honestly.",
+    recommended: "C",
+    recommended_reason: "Fake data: follows the PRD principle \"Show confidence, earn precision\" directly.",
   },
 };
 
