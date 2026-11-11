@@ -243,31 +243,17 @@ function CurrentFork({
       </div>
 
       {result && result.options.length > 0 ? (
-        <>
-          <div className="mt-8 grid grid-cols-3 gap-4">
-            {result.options.map((opt) => (
-              <OptionCard key={opt.id} option={opt} draft={draft} setDraft={setDraft} />
-            ))}
-          </div>
-          {/* A live wireframe mockup under each option card. */}
-          {result.options.some((o) => o.mockup) && (
-            <div className="mt-4 grid grid-cols-3 gap-4">
-              {result.options.map((opt) =>
-                opt.mockup ? (
-                  <MockupPhone key={opt.id} mockup={opt.mockup} label={`Option ${opt.id}`} />
-                ) : (
-                  <div key={opt.id} />
-                ),
-              )}
-            </div>
-          )}
-        </>
+        <div className="mt-8 grid grid-cols-3 gap-4">
+          {result.options.map((opt) => (
+            <OptionCard key={opt.id} option={opt} draft={draft} setDraft={setDraft} />
+          ))}
+        </div>
       ) : status?.state === "loading" ? (
         // D3: three grey placeholder cards while Claude thinks.
         <div className="mt-8">
           <div aria-hidden="true" className="grid grid-cols-3 gap-4">
             {[0, 1, 2].map((i) => (
-              <div key={i} className="h-56 animate-pulse rounded-lg bg-zinc-100" />
+              <div key={i} className="h-[30rem] animate-pulse rounded-lg bg-zinc-100" />
             ))}
           </div>
           <div className="mt-3">
@@ -372,6 +358,13 @@ function OptionCard({
     <div
       className={`flex flex-col rounded-lg border-2 bg-white p-4 ${selected ? "border-blue-600 ring-2 ring-blue-100" : "border-zinc-200"}`}
     >
+      {/* The wireframe comes first (Ran's request). Clicking it selects the card too;
+          keyboard users use the card's button below. */}
+      {option.mockup && (
+        <div className={`mb-3 ${editing ? "" : "cursor-pointer"}`} onClick={editing ? undefined : toggleSelect}>
+          <MockupPhone mockup={option.mockup} label={`Option ${option.id}`} />
+        </div>
+      )}
       {editing ? (
         <div className="space-y-2">
           <label className="block text-xs font-medium text-zinc-700">
@@ -398,7 +391,7 @@ function OptionCard({
           type="button"
           aria-pressed={selected}
           onClick={toggleSelect}
-          className="flex-1 rounded-md text-left focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-blue-600"
+          className="flex flex-1 flex-col justify-start rounded-md text-left focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-blue-600"
         >
           <span className="block text-xs font-medium text-zinc-600">Option {option.id}</span>
           <span className="mt-1 block font-semibold text-zinc-900">{title}</span>

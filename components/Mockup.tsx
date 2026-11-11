@@ -1,4 +1,4 @@
-// A live mockup of one screen, drawn under an option card (Ran's request).
+// A live mockup of one screen, drawn at the top of an option card (Ran's request).
 // Wireframe only: greys, no brand colors or fonts, in both the demo and the live version.
 
 import type { Mockup as MockupSpec, MockupElement } from "@/lib/types";
@@ -137,7 +137,7 @@ export function MockupPhone({ mockup, label }: { mockup: MockupSpec; label: stri
       >
         <div
           aria-hidden="true"
-          className={`relative flex h-[340px] flex-col overflow-hidden rounded-[18px] ${t.screen}`}
+          className={`relative flex h-[300px] flex-col overflow-hidden rounded-[18px] ${t.screen}`}
         >
           <div className={`flex justify-between px-3 pt-1.5 text-[7px] font-semibold ${t.ink}`}>
             <span>9:41</span>
@@ -175,7 +175,6 @@ export function MockupPhone({ mockup, label }: { mockup: MockupSpec; label: stri
           )}
         </div>
       </div>
-      {mockup.screen && <figcaption className="mt-1.5 text-xs text-zinc-600">{mockup.screen}</figcaption>}
     </figure>
   );
 }

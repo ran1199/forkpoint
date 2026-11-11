@@ -103,80 +103,77 @@ const MOCKUPS = {
 export const FAKE_PRODUCT_NAME = "Ladle";
 export const FAKE_PRIMARY_USER = "Maya";
 
+// Text kept short on purpose (Ran: "less words"); the wireframes carry the detail.
 export const FAKE_FORKS: Fork[] = [
   {
     id: "f1",
     lens: "journey",
     screen: "First use",
-    moment: "I finished setup but have no recipes yet. What do I see?",
-    question: "What does Maya see when onboarding ends and she has no saved recipes yet?",
-    prd_says: 'Onboarding "ends by inviting the user to import her first recipe", but the empty Home isn\'t described.',
+    moment: "Setup's done, no recipes yet. What do I see?",
+    question: "What shows after setup, before any recipe exists?",
+    prd_says: "Setup ends by inviting a first import; empty Home isn't described.",
     risk: "high",
   },
   {
     id: "f2",
     lens: "journey",
     screen: "One-tap log",
-    moment: "I tap my usual adobo. Does it log right away, or ask about the portion first?",
-    question: "Does tapping a saved recipe log it immediately, or show the portion adjust first?",
-    prd_says: '"under 2 taps from home" and also "quick portion adjust before confirming"',
+    moment: "I tap my usual adobo. Log now, or ask the portion?",
+    question: "Log on tap, or show the portion adjust first?",
+    prd_says: '"Under 2 taps from home", but also "quick portion adjust".',
     risk: "high",
   },
   {
     id: "f3",
     lens: "app_rule",
     screen: "Everywhere",
-    moment: "How are calorie numbers shown: exact or rounded?",
-    question: "Are calorie numbers shown exact or rounded, and does it depend on the confidence level?",
-    prd_says: '"One simple number plus a confidence level" and "exact-looking numbers hide errors", but no rounding rule.',
+    moment: "Are calories exact or rounded?",
+    question: "Exact or rounded calories, and does confidence matter?",
+    prd_says: '"One simple number plus a confidence level"; no rounding rule.',
     risk: "med",
   },
 ];
 
-// Fork 2's options are word for word from the brief; C is marked as the AI
-// recommendation (Ran's request). Options for forks 1 and 3 were drafted by Claude
-// at Ran's request, based on the Ladle PRD (F1, F2, F8, principle 4, problem P6).
+// Fork 2's options started word for word from the brief and were shortened at
+// Ran's request; C is marked as the AI recommendation. Options for forks 1 and 3
+// were drafted by Claude from the Ladle PRD (F1, F2, F8, principle 4, problem P6).
 export const FAKE_OPTIONS: Record<string, OptionsResult> = {
   f1: {
     options: [
       {
         id: "A",
-        title: "Invite screen, then Home",
-        description:
-          "Onboarding ends on a screen offering \"Import a recipe\" (link, text or recipe card) or \"Not now\"; Not now opens Home with calories left and no meals yet.",
-        upside: "Follows F1's invitation exactly",
-        downside: "An extra screen before Maya reaches Home",
+        title: "Invite screen first",
+        description: 'Setup ends on "Import a recipe" or "Not now".',
+        upside: "Follows F1 exactly",
+        downside: "One extra screen",
         mockup: MOCKUPS.f1.A,
       },
       {
         id: "B",
-        title: "Straight into import",
-        description:
-          "The last onboarding step opens the import screen directly, and Home appears once her first recipe is saved.",
-        upside: "Starts the core loop and recipe-based logging right away",
-        downside: "Risks missing the under-2-minutes-to-Home target",
+        title: "Straight to import",
+        description: "Setup opens import; Home comes after the first recipe.",
+        upside: "Core loop starts now",
+        downside: "May miss the 2-minute target",
         mockup: MOCKUPS.f1.B,
       },
       {
         id: "C",
-        title: "Home with an import card",
-        description:
-          "Onboarding ends on Home: calories left today shows, and where today's meals would be, a card invites her to import her first recipe.",
-        upside: "Reaches Home fast and keeps the invitation in view",
-        downside: "The card competes with snap a plate and add other food",
+        title: "Home + import card",
+        description: "Home opens with a card inviting a first import.",
+        upside: "Fast to Home, invite visible",
+        downside: "Competes with other actions",
         mockup: MOCKUPS.f1.C,
       },
     ],
     recommended: "C",
-    recommended_reason:
-      "Fake data: meets the under-2-minutes-to-Home acceptance while keeping F1's import invitation visible.",
+    recommended_reason: "Fake data: reaches Home in under 2 minutes and keeps F1's invitation.",
   },
   f2: {
     options: [
       {
         id: "A",
         title: "Instant log + undo",
-        description: "Tapping logs your usual portion right away; a toast offers Undo and Adjust.",
+        description: "Tap logs your usual portion; a toast offers Undo / Adjust.",
         upside: "Meets the 2-tap target",
         downside: "Easy to log the wrong portion",
         mockup: MOCKUPS.f2.A,
@@ -184,7 +181,7 @@ export const FAKE_OPTIONS: Record<string, OptionsResult> = {
       {
         id: "B",
         title: "Portion sheet",
-        description: "Tapping opens ½ / 1 / 1½ / 2, set to your usual; then tap Log.",
+        description: "Tap opens ½ / 1 / 1½ / 2, then Log.",
         upside: "Always accurate",
         downside: "3 taps, misses the target",
         mockup: MOCKUPS.f2.B,
@@ -192,48 +189,44 @@ export const FAKE_OPTIONS: Record<string, OptionsResult> = {
       {
         id: "C",
         title: "Smart default",
-        description: "Recipes confirmed 3+ times log instantly; newer ones show the portion sheet.",
+        description: "Confirmed 3+ times: logs instantly. Newer: portion sheet.",
         upside: "Fast where trust is earned",
-        downside: "Behaves differently between recipes",
+        downside: "Differs between recipes",
         mockup: MOCKUPS.f2.C,
       },
     ],
     recommended: "C",
-    recommended_reason:
-      "Fake data: keeps familiar recipes within the 2-tap target while still offering a portion check where mistakes are likely.",
+    recommended_reason: "Fake data: fast for familiar recipes, a portion check where mistakes are likely.",
   },
   f3: {
     options: [
       {
         id: "A",
         title: "Exact everywhere",
-        description:
-          "Every screen shows the calculated value, for example 487 kcal, and the confidence label carries the uncertainty.",
-        upside: "Same dish, same number, easy to check against the recipe card",
-        downside: "Looks precise even on a rough estimate (problem P6)",
+        description: "Always the calculated value, e.g. 487 kcal.",
+        upside: "Same dish, same number",
+        downside: "Looks falsely precise (P6)",
         mockup: MOCKUPS.f3.A,
       },
       {
         id: "B",
         title: "Rounded everywhere",
-        description:
-          "Every number rounds to the nearest 10 kcal, for example 490 kcal, including calories left today and fix effects like +240 kcal.",
-        upside: "One simple number that doesn't overclaim accuracy",
-        downside: "Rounded meals may not add up exactly to the day's total",
+        description: "Nearest 10 kcal everywhere, e.g. 490.",
+        upside: "Honest about estimates",
+        downside: "Items may not sum to the total",
         mockup: MOCKUPS.f3.B,
       },
       {
         id: "C",
-        title: "Rounding follows confidence",
-        description:
-          "\"Rough estimate\" rounds to the nearest 50 kcal, \"Good estimate\" to the nearest 10, and \"Your recipe ✓\" shows the exact value.",
-        upside: "Precision is earned, as in \"Show confidence, earn precision\"",
-        downside: "A dish's number changes shape as its confidence rises",
+        title: "Rounding by confidence",
+        description: "Rough: nearest 50. Good: nearest 10. Your recipe ✓: exact.",
+        upside: "Precision is earned",
+        downside: "Numbers change as trust grows",
         mockup: MOCKUPS.f3.C,
       },
     ],
     recommended: "C",
-    recommended_reason: "Fake data: follows the PRD principle \"Show confidence, earn precision\" directly.",
+    recommended_reason: 'Fake data: follows "Show confidence, earn precision".',
   },
 };
 
