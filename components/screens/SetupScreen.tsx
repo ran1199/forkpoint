@@ -173,6 +173,10 @@ export function SetupScreen() {
 
       <section className="mt-10">
         <h2 className="text-base font-medium text-zinc-900">Sketches</h2>
+        <p className="mt-1 text-sm text-zinc-700">
+          Optional. Sketches or wireframes of your key screens, even rough hand drawings, help Claude see what
+          you&apos;ve already decided, so the walkthrough only asks about what&apos;s still open.
+        </p>
         <p className="mt-1 text-sm text-zinc-600">PNG or JPG, up to {MAX_SKETCHES} images.</p>
         <div className="mt-3 flex flex-wrap gap-4">
           {session.sketches.map((sk) => (
