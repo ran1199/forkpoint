@@ -70,7 +70,13 @@ export type Choice =
   | { kind: "later" }
   | { kind: "ai"; optionId: string | null; title: string; description: string };
 
-export type Decision = { choice: Choice; why: string; decidedAt: number };
+export type Decision = {
+  choice: Choice;
+  why: string;
+  decidedAt: number;
+  /** Set when this fork's options were refreshed after the decision (its card is gone). */
+  fromOldOptions?: boolean;
+};
 
 /** Unconfirmed work on a fork, kept so nothing typed is lost on refresh (D1). */
 export type Draft = {

@@ -48,7 +48,13 @@ async function requestOptions(
         s.options[forkId] && draft?.selected === "option"
           ? { ...s.drafts, [forkId]: { ...draft, selected: null, optionId: null, edits: {}, editing: false } }
           : s.drafts;
-      return { ...s, drafts, options: { ...s.options, [forkId]: result } };
+      // A decided fork keeps its decision; if it was a card (or the AI's pick), that card is gone now.
+      const decision = s.decisions[forkId];
+      const decisions =
+        s.options[forkId] && decision && (decision.choice.kind === "option" || decision.choice.kind === "ai")
+          ? { ...s.decisions, [forkId]: { ...decision, fromOldOptions: true } }
+          : s.decisions;
+      return { ...s, drafts, decisions, options: { ...s.options, [forkId]: result } };
     });
     setAiStatus(key, null);
   } catch (error) {
@@ -63,12 +69,9 @@ export function WalkthroughScreen() {
   const currentForkId = session.currentForkId ?? session.forks[0]?.id ?? null;
   // D3: call B runs when the designer arrives at a fork (live mode only; demo makes no calls).
   const current = currentForkId ? session.options[currentForkId] : undefined;
-  // Undecided forks saved with blank wireframes get fresh options once (decided forks keep theirs).
+  // Forks saved with blank wireframes get fresh options once (Ran's choice: decided forks too).
   const needsRefresh =
-    currentForkId !== null &&
-    !session.decisions[currentForkId] &&
-    hasBlankWireframe(current) &&
-    !refreshedForks.has(currentForkId);
+    currentForkId !== null && hasBlankWireframe(current) && !refreshedForks.has(currentForkId);
   const needsOptions = mode === "app" && currentForkId !== null && (!current || needsRefresh);
   useEffect(() => {
     if (!needsOptions || !currentForkId) return;
@@ -312,6 +315,12 @@ function CurrentFork({
       {draft.selected === "ai" && !result?.options.some((o) => o.id === result.recommended) && (
         <p className="mt-4 text-sm text-zinc-700">
           There&apos;s no recommendation to save yet, because no options have loaded for this fork.
+        </p>
+      )}
+
+      {session.decisions[fork.id]?.fromOldOptions && (
+        <p className="mt-4 text-sm text-zinc-700">
+          These options were refreshed. Your earlier choice is kept below in your own words; confirm it or pick a card.
         </p>
       )}
 

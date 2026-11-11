@@ -255,6 +255,10 @@ export function draftFromDecision(decision: Decision | undefined): Draft {
   if (!decision) return emptyDraft();
   const d = { ...emptyDraft(), why: decision.why };
   const c = decision.choice;
+  // The options were refreshed since, so the chosen card is gone: keep the choice as words.
+  if (decision.fromOldOptions && (c.kind === "option" || c.kind === "ai")) {
+    return { ...d, selected: "own", ownText: c.description ? `${c.title}: ${c.description}` : c.title };
+  }
   if (c.kind === "option") {
     return { ...d, selected: "option", optionId: c.optionId, edits: { [c.optionId]: { title: c.title, description: c.description } } };
   }
