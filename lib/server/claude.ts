@@ -70,6 +70,9 @@ export async function callStructured<S extends z.ZodType>(opts: {
   content: Anthropic.ContentBlockParam[];
   schema: S;
   maxTokens: number;
+  /** Optional extra check. If it finds a problem, ask once more; if the second answer
+   *  still has it, return that answer anyway rather than failing the whole step. */
+  softCheck?: (result: z.infer<S>) => string | null;
 }): Promise<z.infer<S>> {
   const anthropic = getClient();
   const model = getModel();
@@ -91,7 +94,15 @@ export async function callStructured<S extends z.ZodType>(opts: {
         problem = "Claude's answer was too long and got cut off.";
         continue;
       }
-      if (message.parsed_output != null) return message.parsed_output as z.infer<S>;
+      if (message.parsed_output != null) {
+        const result = message.parsed_output as z.infer<S>;
+        const softProblem = opts.softCheck?.(result);
+        if (softProblem && attempt === 1) {
+          console.warn(`Forkpoint: asking again (${softProblem})`);
+          continue;
+        }
+        return result;
+      }
     } catch (error) {
       if (error instanceof FriendlyError) throw error;
       if (error instanceof Anthropic.AuthenticationError) throw new FriendlyError("Claude rejected the API key.");

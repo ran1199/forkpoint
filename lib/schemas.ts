@@ -42,7 +42,7 @@ export const MockupSchema = z.object({
       detail: z.string(),
       layer: z.enum(["screen", "sheet", "toast"]),
     }),
-  ),
+  ).min(1), // never an empty wireframe (enforced by the API itself)
 });
 
 export const OptionsResultSchema = z.object({
