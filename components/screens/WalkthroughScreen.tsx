@@ -9,7 +9,7 @@ import { MockupPhone } from "@/components/Mockup";
 import { useSession } from "@/components/SessionProvider";
 import { AiError, AiLoading, btn, RiskBadge, SaveWarning, StatusPill } from "@/components/ui";
 import { fetchOptions } from "@/lib/ai-client";
-import { visibleElementCount } from "@/lib/mockup";
+import { needsRepair, OPTIONS_FORMAT, visibleElementCount } from "@/lib/mockup";
 import { getAiStatus, setAiStatus, useAiStatus } from "@/lib/ai-status";
 import {
   decisionStatus,
@@ -19,13 +19,9 @@ import {
   groupByLens,
   LENS_LABEL,
 } from "@/lib/session";
-import type { Choice, Draft, Fork, Option, OptionsResult, Session } from "@/lib/types";
+import type { Choice, Draft, Fork, Option, Session } from "@/lib/types";
 
-/** Options saved before wireframes were checked can have blank ones. */
-function hasBlankWireframe(result: OptionsResult | undefined) {
-  return !!result && result.options.some((o) => visibleElementCount(o.mockup?.elements) < 2);
-}
-// Forks whose blank wireframes were already re-asked for on this page load (at most once each).
+// Forks already re-asked for on this page load (a safety net against repeats after errors).
 const refreshedForks = new Set<string>();
 
 /** Call B for one fork. The answer is saved under that fork, even if the designer has moved on. */
@@ -40,7 +36,7 @@ async function requestOptions(
   if (!fork || getAiStatus(key)?.state === "loading") return;
   setAiStatus(key, { state: "loading" });
   try {
-    const result = await fetchOptions(getSession(), files, fork);
+    const result = { ...(await fetchOptions(getSession(), files, fork)), format: OPTIONS_FORMAT };
     update((s) => {
       // If these options replace older ones, drop an unconfirmed card pick (it pointed at the old cards).
       const draft = s.drafts[forkId];
@@ -69,9 +65,9 @@ export function WalkthroughScreen() {
   const currentForkId = session.currentForkId ?? session.forks[0]?.id ?? null;
   // D3: call B runs when the designer arrives at a fork (live mode only; demo makes no calls).
   const current = currentForkId ? session.options[currentForkId] : undefined;
-  // Forks saved with blank wireframes get fresh options once (Ran's choice: decided forks too).
-  const needsRefresh =
-    currentForkId !== null && hasBlankWireframe(current) && !refreshedForks.has(currentForkId);
+  // Older saved options with blank wireframes or too many words get fresh options once
+  // (Ran's choice: decided forks too).
+  const needsRefresh = currentForkId !== null && needsRepair(current) && !refreshedForks.has(currentForkId);
   const needsOptions = mode === "app" && currentForkId !== null && (!current || needsRefresh);
   useEffect(() => {
     if (!needsOptions || !currentForkId) return;

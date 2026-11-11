@@ -58,6 +58,8 @@ export type Option = {
 };
 
 export type OptionsResult = {
+  /** 2 = fetched with wireframe checks and word limits. Older saved options have none. */
+  format?: number;
   options: Option[];
   recommended: string | null; // option id, or null when there is none (fake data)
   recommended_reason: string;
